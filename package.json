@@ -1,0 +1,13 @@
+{
+  "name": "mockoon-template-generator",
+  "version": "1.0.0",
+  "description": "This script generates dynamic templates for mockoon schema from openapi json components.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
