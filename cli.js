@@ -5,16 +5,20 @@ const yargs = require('yargs/yargs');
 
 const argv = yargs(process.argv.slice(2))
   .option('openapi-file', {
-    alias: 'oaf',
-    describe: 'Relative path to the openapi JSON file. E.g. ./openapi.json',
+    alias: 'a',
+    describe: 'Absolute path to the openapi JSON file. E.g. /home/mypath/openapi.json',
   })
   .option('mockoon-file', {
-    alias: 'mf',
-    describe: 'Relative path to the mockoon JSON file. E.g. ./API_MOCKOON.json',
+    alias: 'm',
+    describe: 'Absolute path to the mockoon JSON file. E.g. /home/mypath/API_MOCKOON.json',
+  })
+  .option('output-path', {
+    alias: 'o',
+    describe: 'Absolute path to the mockoon generated schema. E.g. /home/mypath/schema.json',
   })
   .demandOption(
-    ['openapi-file', 'mockoon-file'],
-    'Please provide both openapi-file and mockoon-file arguments to work with this tool'
+    ['openapi-file', 'mockoon-file', 'output-path'],
+    'Please provide both openapi-file, mockoon-file and output-path arguments to work with this tool'
   ).argv;
 
 const mnRaw = fs.readFileSync(argv['mockoon-file'], 'utf8');
@@ -78,7 +82,7 @@ for (let i = 0; i < mn_routes.length; i++) {
 mn.routes = mn_routes;
 
 fs.writeFileSync(
-  __dirname + '/mockoon-generated-schema.json',
+  argv['output-path'],
   JSON.stringify(mn, undefined, 2).replace(/\\\\\\/g, '\\'),
   { encoding: 'utf8' }
 );
@@ -240,7 +244,7 @@ function generateObject(
   }
 }
 
-function generateRandomNumber(min, max) {
+function generateRandomNumber(min, max) { 
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
