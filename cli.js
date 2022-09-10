@@ -1,7 +1,24 @@
-const fs = require('fs');
+#! /usr/bin/env node
 
-const mnRaw = fs.readFileSync('./API_MOCKOON.json', 'utf8');
-const oaRaw = fs.readFileSync('./openapi.json', 'utf8');
+const fs = require('fs');
+const yargs = require('yargs/yargs');
+
+const argv = yargs(process.argv.slice(2))
+  .option('openapi-file', {
+    alias: 'oaf',
+    describe: 'Relative path to the openapi JSON file. E.g. ./openapi.json',
+  })
+  .option('mockoon-file', {
+    alias: 'mf',
+    describe: 'Relative path to the mockoon JSON file. E.g. ./API_MOCKOON.json',
+  })
+  .demandOption(
+    ['openapi-file', 'mockoon-file'],
+    'Please provide both openapi-file and mockoon-file arguments to work with this tool'
+  ).argv;
+
+const mnRaw = fs.readFileSync(argv['mockoon-file'], 'utf8');
+const oaRaw = fs.readFileSync(argv['openapi-file'], 'utf8');
 
 const mn = JSON.parse(mnRaw);
 const oa = JSON.parse(oaRaw);
@@ -64,7 +81,7 @@ fs.writeFileSync(
   __dirname + '/mockoon-generated-schema.json',
   JSON.stringify(mn, undefined, 2).replace(/\\\\\\/g, '\\'),
   { encoding: 'utf8' }
-)
+);
 
 function getOAComponent(ref) {
   let component = JSON.parse(JSON.stringify(oa));
