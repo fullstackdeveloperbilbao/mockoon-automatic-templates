@@ -3,6 +3,23 @@
 const fs = require('fs');
 const yargs = require('yargs/yargs');
 
+const Parent = {
+  ROOT: 1,
+  NESTED_ARRAY: 2,
+  NESTED_OBJECT: 3,
+};
+
+const StringFormat = {
+  DATETIME: 'date-time',
+};
+
+const DataType = {
+  INTEGER: 'integer',
+  STRING: 'string',
+  BOOLEAN: 'boolean',
+  ARRAY: 'array',
+};
+
 const argv = yargs(process.argv.slice(2))
   .option('openapi-file', {
     alias: 'a',
@@ -121,60 +138,60 @@ function createData(
   objectNesting
 ) {
   let body;
-  if (schema['type']) {
-    if (schema['type'] == 'integer') {
-      body = generateInteger();
-      if (Object.prototype.toString.call(mnData) == '[object Array]') {
-        mnData.push(body);
-      } else if (Object.prototype.toString.call(mnData) == '[object Object]') {
-        mnData[property] = body;
-      } else {
-        mnData[endpoint][method][statusCode].body = body;
-      }
-    } else if (schema['type'] == 'string') {
-      if (schema['format'] == 'date-time') {
-        body = generateDate();
-      } else {
-        body = generateString(schema['minLength'], schema['maxLength']);
-      }
-      if (Object.prototype.toString.call(mnData) == '[object Array]') {
-        mnData.push(body);
-      } else if (Object.prototype.toString.call(mnData) == '[object Object]') {
-        mnData[property] = body;
-      } else {
-        mnData[endpoint][method][statusCode].body = body;
-      }
-    } else if (schema['type'] == 'boolean') {
-      body = generateBoolean();
-      if (Object.prototype.toString.call(mnData) == '[object Array]') {
-        mnData.push(body);
-      } else if (Object.prototype.toString.call(mnData) == '[object Object]') {
-        mnData[property] = body;
-      } else {
-        mnData[endpoint][method][statusCode].body = body;
-      }
-    } else if (schema['type'] == 'array') {
-      if (property) {
-        mnData[property] = [];
-        generateArray(
-          schema['items'],
-          mnData[property],
-          endpoint,
-          method,
-          statusCode
-        );
-      } else {
-        mnData[endpoint][method][statusCode].body = [];
-        generateArray(
-          schema['items'],
-          mnData[endpoint][method][statusCode].body,
-          endpoint,
-          method,
-          statusCode
-        );
-      }
+  const parent = getParent(mnData, endpoint, method, statusCode);
+
+  if (schema['type'] == DataType.INTEGER) {
+    body = generateInteger();
+    if (parent == Parent.NESTED_ARRAY) {
+      mnData.push(body);
+    } else if (parent == Parent.NESTED_OBJECT) {
+      mnData[property] = body;
+    } else if (parent == Parent.ROOT) {
+      mnData[endpoint][method][statusCode].body = body;
     }
-  } else if (/#\/components\/schemas/.test(schema['$ref'])) {
+  } else if (schema['type'] == DataType.STRING) {
+    if (schema['format'] == StringFormat.DATETIME) {
+      body = generateDate();
+    } else {
+      body = generateString(schema['minLength'], schema['maxLength']);
+    }
+    if (parent == Parent.NESTED_ARRAY) {
+      mnData.push(body);
+    } else if (parent == Parent.NESTED_OBJECT) {
+      mnData[property] = body;
+    } else if (parent == Parent.ROOT) {
+      mnData[endpoint][method][statusCode].body = body;
+    }
+  } else if (schema['type'] == DataType.BOOLEAN) {
+    body = generateBoolean();
+    if (parent == Parent.NESTED_ARRAY) {
+      mnData.push(body);
+    } else if (parent == Parent.NESTED_OBJECT) {
+      mnData[property] = body;
+    } else if (parent == Parent.ROOT) {
+      mnData[endpoint][method][statusCode].body = body;
+    }
+  } else if (schema['type'] == DataType.ARRAY) {
+    if (property) {
+      mnData[property] = [];
+      generateArray(
+        schema['items'],
+        mnData[property],
+        endpoint,
+        method,
+        statusCode
+      );
+    } else {
+      mnData[endpoint][method][statusCode].body = [];
+      generateArray(
+        schema['items'],
+        mnData[endpoint][method][statusCode].body,
+        endpoint,
+        method,
+        statusCode
+      );
+    }
+  } else if (isComponent(schema['$ref'])) {
     if (property) {
       mnData[property] = {};
       generateObject(
@@ -273,6 +290,24 @@ function generateRandomNumber(min, max) {
 function endpointFormatToOpenapi(endpoint) {
   endpoint = '/' + endpoint.replace(/:[a-zA-Z\d]*/g, replacer);
   return endpoint;
+}
+
+function getParent(mnData, endpoint, method, statusCode) {
+  if (
+    mnData[endpoint] !== undefined &&
+    mnData[endpoint][method] !== undefined &&
+    mnData[endpoint][method][statusCode] !== undefined
+  ) {
+    return Parent.ROOT;
+  } else if (Object.prototype.toString.call(mnData) == '[object Object]') {
+    return Parent.NESTED_OBJECT;
+  } else if (Object.prototype.toString.call(mnData) == '[object Array]') {
+    return Parent.NESTED_ARRAY;
+  }
+}
+
+function isComponent(ref) {
+  return /#\/components\/schemas/.test(ref);
 }
 
 function replacer(str) {
