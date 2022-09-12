@@ -6,36 +6,20 @@ const yargs = require('yargs/yargs');
 const argv = yargs(process.argv.slice(2))
   .option('openapi-file', {
     alias: 'a',
-    describe:
-      'Absolute path to the openapi JSON file. E.g. /home/mypath/openapi.json',
+    describe: 'Absolute path to the openapi JSON file. E.g. /home/mypath/openapi.json',
   })
   .option('mockoon-file', {
     alias: 'm',
-    describe:
-      'Absolute path to the mockoon JSON file. E.g. /home/mypath/API_MOCKOON.json',
+    describe: 'Absolute path to the mockoon JSON file. E.g. /home/mypath/API_MOCKOON.json',
   })
   .option('output-path', {
     alias: 'o',
-    describe:
-      'Absolute path to the mockoon generated schema. E.g. /home/mypath/schema.json',
-  })
-  .option('nested-level', {
-    alias: 'n',
-    describe:
-      'The nested level of components data. Must be a number between 1 and 100. E.g. 4',
+    describe: 'Absolute path to the mockoon generated schema. E.g. /home/mypath/schema.json',
   })
   .demandOption(
     ['openapi-file', 'mockoon-file', 'output-path'],
-    'Please provide openapi-file, mockoon-file and output-path arguments to work with this tool'
-  )
-  .check((argv, _) => {
-    const nl = argv['nested-level'];
-    if (nl <= 0 || nl > 100) {
-      throw new Error('Nested level must be a number between 1 and 100.');
-    } else {
-      return true;
-    }
-  }).argv;
+    'Please provide both openapi-file, mockoon-file and output-path arguments to work with this tool'
+  ).argv;
 
 const mnRaw = fs.readFileSync(argv['mockoon-file'], 'utf8');
 const oaRaw = fs.readFileSync(argv['openapi-file'], 'utf8');
@@ -245,13 +229,7 @@ function generateObject(
   const component = getOAComponent(componentRef);
   const properties = component['properties'];
   objectNesting++;
-
-  let objectNestingLimit = 3;
-  if (argv['nested-level'] != undefined) {
-    objectNestingLimit = argv['nested-level'];
-  }
-
-  if (objectNesting <= objectNestingLimit) {
+  if (objectNesting < 4) {
     for (let property in properties) {
       createData(
         properties[property],
@@ -266,7 +244,7 @@ function generateObject(
   }
 }
 
-function generateRandomNumber(min, max) {
+function generateRandomNumber(min, max) { 
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
