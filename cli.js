@@ -21,8 +21,6 @@ const DataType = {
   ARRAY: 'array',
 };
 
-var nestingLevelLimit = 2;
-
 const argv = yargs(process.argv.slice(2))
   .option('openapi-file', {
     alias: 'a',
@@ -42,12 +40,13 @@ const argv = yargs(process.argv.slice(2))
   .option('nested-level', {
     alias: 'n',
     describe:
-      'The nested level of components data. Must be a number between 1 and 4, both included. E.g. 2',
+      'The nested level of components data. Must be a number between 1 and 4, both included. 2 by default. E.g. 3',
   })
   .demandOption(
     ['openapi-file', 'mockoon-file', 'output-path'],
     'Please provide openapi-file, mockoon-file and output-path arguments to work with this tool'
   )
+  .default('nested-level', 2)
   .check((argv, _) => {
     const nl = argv['nested-level'];
     if (nl <= 0 || nl > 4) {
@@ -192,11 +191,7 @@ function generateObject(schema, mnData, nestingLevel) {
   const component = getOAComponent(componentRef);
   const properties = component['properties'];
 
-  if (argv['nested-level'] != undefined) {
-    nestingLevelLimit = argv['nested-level'];
-  }
-
-  if (nestingLevel <= nestingLevelLimit) {
+  if (nestingLevel <= argv['nested-level']) {
     nestingLevel++;
     for (let property in properties) {
       let body;
@@ -238,7 +233,7 @@ function generateObject(schema, mnData, nestingLevel) {
 function generateArray(schema, mnData, nestingLevel) {
   const itemsLength = generateRandomNumber(1, 2);
 
-  if (nestingLevel <= nestingLevelLimit) {
+  if (nestingLevel <= argv['nested-level']) {
     for (let i = 0; i < itemsLength; i++) {
       if (schema['type'] == DataType.INTEGER) {
         body = generateInteger();
