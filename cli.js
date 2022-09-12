@@ -42,7 +42,7 @@ const argv = yargs(process.argv.slice(2))
   .option('nested-level', {
     alias: 'n',
     describe:
-      'The nested level of components data. Must be a number between 1 and 4. E.g. 2',
+      'The nested level of components data. Must be a number between 1 and 4, both included. E.g. 2',
   })
   .demandOption(
     ['openapi-file', 'mockoon-file', 'output-path'],

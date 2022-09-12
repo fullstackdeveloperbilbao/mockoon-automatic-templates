@@ -13,6 +13,8 @@ Options:
                       /home/mypath/API_MOCKOON.json                  [required]
   -o, --output-path   Absolute path to the mockoon generated schema. E.g.
                       /home/mypath/schema.json                       [required]
+  -n, --nested-level  The nested level of components data. Must be a number
+                      between 1 and 4, both included. E.g. 2
 ```
 
 # COMMAND
