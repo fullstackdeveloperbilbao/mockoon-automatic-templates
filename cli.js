@@ -20,6 +20,8 @@ const DataType = {
   ARRAY: 'array',
 };
 
+var nestingLevelLimit = 2;
+
 const argv = yargs(process.argv.slice(2))
   .option('openapi-file', {
     alias: 'a',
@@ -39,7 +41,7 @@ const argv = yargs(process.argv.slice(2))
   .option('nested-level', {
     alias: 'n',
     describe:
-      'The nested level of components data. Must be a number between 1 and 100. E.g. 4',
+      'The nested level of components data. Must be a number between 1 and 4. E.g. 2',
   })
   .demandOption(
     ['openapi-file', 'mockoon-file', 'output-path'],
@@ -47,7 +49,7 @@ const argv = yargs(process.argv.slice(2))
   )
   .check((argv, _) => {
     const nl = argv['nested-level'];
-    if (nl <= 0 || nl > 100) {
+    if (nl <= 0 || nl > 4) {
       throw new Error('Nested level must be a number between 1 and 100.');
     } else {
       return true;
@@ -128,15 +130,7 @@ function getOAComponent(ref) {
   return component;
 }
 
-function createData(
-  schema,
-  mnData,
-  endpoint,
-  method,
-  statusCode,
-  property,
-  objectNesting
-) {
+function createData(schema, mnData, endpoint, method, statusCode) {
   let body;
   const parent = getParent(mnData, endpoint, method, statusCode);
 
@@ -172,47 +166,105 @@ function createData(
       mnData[endpoint][method][statusCode].body = body;
     }
   } else if (schema['type'] == DataType.ARRAY) {
-    if (property) {
-      mnData[property] = [];
-      generateArray(
-        schema['items'],
-        mnData[property],
-        endpoint,
-        method,
-        statusCode
-      );
-    } else {
-      mnData[endpoint][method][statusCode].body = [];
-      generateArray(
-        schema['items'],
-        mnData[endpoint][method][statusCode].body,
-        endpoint,
-        method,
-        statusCode
-      );
-    }
+    mnData[endpoint][method][statusCode].body = [];
+    const nestingLevel = 0;
+    generateArray(
+      schema['items'],
+      mnData[endpoint][method][statusCode].body,
+      nestingLevel
+    );
   } else if (isComponent(schema['$ref'])) {
-    if (property) {
-      mnData[property] = {};
-      generateObject(
-        schema['$ref'],
-        mnData[property],
-        endpoint,
-        method,
-        statusCode,
-        objectNesting
-      );
-    } else {
-      mnData[endpoint][method][statusCode].body = {};
-      const objectNesting = 0;
-      generateObject(
-        schema['$ref'],
-        mnData[endpoint][method][statusCode].body,
-        endpoint,
-        method,
-        statusCode,
-        objectNesting
-      );
+    mnData[endpoint][method][statusCode].body = {};
+    const nestingLevel = 0;
+    generateObject(
+      schema['$ref'],
+      mnData[endpoint][method][statusCode].body,
+      nestingLevel
+    );
+  }
+}
+
+function generateObject(schema, mnData, nestingLevel) {
+  const componentRef = schema.substr(2).split('/');
+  const component = getOAComponent(componentRef);
+  const properties = component['properties'];
+
+  if (argv['nested-level'] != undefined) {
+    nestingLevelLimit = argv['nested-level'];
+  }
+
+  if (nestingLevel <= nestingLevelLimit) {
+    nestingLevel++;
+    for (let property in properties) {
+      let body;
+      if (properties[property]['type'] == DataType.INTEGER) {
+        body = generateInteger();
+        mnData[property] = body;
+      } else if (properties[property]['type'] == DataType.STRING) {
+        if (properties[property]['format'] == StringFormat.DATETIME) {
+          body = generateDate();
+        } else {
+          body = generateString(
+            properties[property]['minLength'],
+            properties[property]['maxLength']
+          );
+        }
+        mnData[property] = body;
+      } else if (properties[property]['type'] == DataType.BOOLEAN) {
+        body = generateBoolean();
+        mnData[property] = body;
+      } else if (properties[property]['type'] == DataType.ARRAY) {
+        mnData[property] = [];
+        generateArray(
+          properties[property]['items'],
+          mnData[property],
+          nestingLevel
+        );
+      } else if (isComponent(properties[property]['$ref'])) {
+        mnData[property] = {};
+        generateObject(
+          properties[property]['$ref'],
+          mnData[property],
+          nestingLevel
+        );
+      }
+    }
+  }
+}
+
+function generateArray(schema, mnData, nestingLevel) {
+  const itemsLength = generateRandomNumber(1, 2);
+
+  if (nestingLevel <= nestingLevelLimit) {
+    for (let i = 0; i < itemsLength; i++) {
+      if (schema['type'] == DataType.INTEGER) {
+        body = generateInteger();
+        mnData.push(body);
+      } else if (schema['type'] == DataType.STRING) {
+        if (schema['format'] == StringFormat.DATETIME) {
+          body = generateDate();
+        } else {
+          body = generateString(schema['minLength'], schema['maxLength']);
+        }
+        mnData.push(body);
+      } else if (schema['type'] == DataType.BOOLEAN) {
+        body = generateBoolean();
+        mnData.push(body);
+      } else if (schema['type'] == DataType.ARRAY) {
+        mnData.push([]);
+        generateArray(
+          properties[property]['items'],
+          mnData[mnData.length - 1],
+          nestingLevel
+        );
+      } else if (isComponent(schema['$ref'])) {
+        mnData.push({});
+        generateObject(
+          schema['$ref'],
+          mnData[mnData.length - 1],
+          nestingLevel
+        );
+      }
     }
   }
 }
@@ -239,48 +291,6 @@ function generateInteger() {
 
 function generateBoolean() {
   return "{{faker 'datatype.boolean' }}";
-}
-
-function generateArray(schema, mnData, endpoint, method, statusCode) {
-  const itemsLength = generateRandomNumber(1, 5);
-  for (let i = 0; i < itemsLength; i++) {
-    if (schema['type']) {
-      createData(schema, mnData, endpoint, method, statusCode);
-    }
-  }
-}
-
-function generateObject(
-  schema,
-  mnData,
-  endpoint,
-  method,
-  statusCode,
-  objectNesting
-) {
-  let componentRef = schema.substr(2).split('/');
-  const component = getOAComponent(componentRef);
-  const properties = component['properties'];
-  objectNesting++;
-
-  let objectNestingLimit = 3;
-  if (argv['nested-level'] != undefined) {
-    objectNestingLimit = argv['nested-level'];
-  }
-
-  if (objectNesting <= objectNestingLimit) {
-    for (let property in properties) {
-      createData(
-        properties[property],
-        mnData,
-        endpoint,
-        method,
-        statusCode,
-        property,
-        objectNesting
-      );
-    }
-  }
 }
 
 function generateRandomNumber(min, max) {
