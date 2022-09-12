@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "progress": "^2.0.3",
     "yargs": "^17.5.1"
   }
 }

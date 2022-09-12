@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const yargs = require('yargs/yargs');
+const ProgressBar = require('progress');
 
 const Parent = {
   ROOT: 1,
@@ -50,7 +51,7 @@ const argv = yargs(process.argv.slice(2))
   .check((argv, _) => {
     const nl = argv['nested-level'];
     if (nl <= 0 || nl > 4) {
-      throw new Error('Nested level must be a number between 1 and 100.');
+      throw new Error('Nested level must be a number between 1 and 4.');
     } else {
       return true;
     }
@@ -63,9 +64,11 @@ const mn = JSON.parse(mnRaw);
 const oa = JSON.parse(oaRaw);
 
 const mn_routes = mn.routes;
+const bar = new ProgressBar('Creating mockoon schema [:bar] :percent :etas', { total: mn_routes.length - 1, width: 50 });
 
 let mnData = {};
 for (let i = 0; i < mn_routes.length; i++) {
+  bar.tick();
   let mnHelper = {
     endpoint: mn_routes[i].endpoint,
     method: mn_routes[i].method,
@@ -259,11 +262,7 @@ function generateArray(schema, mnData, nestingLevel) {
         );
       } else if (isComponent(schema['$ref'])) {
         mnData.push({});
-        generateObject(
-          schema['$ref'],
-          mnData[mnData.length - 1],
-          nestingLevel
-        );
+        generateObject(schema['$ref'], mnData[mnData.length - 1], nestingLevel);
       }
     }
   }
